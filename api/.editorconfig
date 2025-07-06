@@ -1,0 +1,24 @@
+# top-most EditorConfig file
+root = true
+
+# Reglas generales para todos los archivos en el proyecto
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Reglas específicas para archivos TypeScript, JavaScript y JSON
+# NestJS y la mayoría de los proyectos TS/JS usan 2 espacios
+[*.{ts,tsx,js,jsx,json}]
+indent_style = space
+indent_size = 2
+
+# Reglas para archivos de configuración (YAML, XML, etc.)
+[*.{yml,yaml,xml}]
+indent_style = space
+indent_size = 2
+
+# Reglas para archivos Markdown (comunes en documentación)
+[*.md]
+trim_trailing_whitespace = false # Permite espacios al final de línea para saltos de línea en Markdown

@@ -8,13 +8,11 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# Reglas específicas para archivos Vue, TypeScript, JavaScript, JSX, TSX, JSON y CSS/SCSS
-# Vue usa archivos .vue que combinan HTML, JS y CSS.
-[*.{vue,ts,tsx,js,jsx,json,css,scss}]
+# Reglas específicas para archivos Astro, TypeScript, JavaScript, JSX, TSX, JSON y CSS/SCSS
+# Astro usa componentes que pueden combinar HTML, JS y CSS.
+[*.{astro,ts,tsx,js,jsx,json,css,scss}]
 indent_style = space
 indent_size = 2
-trim_trailing_whitespace = true
-insert_final_newline = true
 
 # Reglas para archivos HTML (si tienes archivos .html puros)
 [*.html]
