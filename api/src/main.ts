@@ -7,12 +7,12 @@ async function bootstrap() {
   
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Remove properties that are not in the DTO
-    forbidNonWhitelisted: true, // Throw error if extra properties are sent
-    transform: true, // Transform string parameters to their correct types
+    whitelist: true, // Eliminar propiedades que no están en el DTO
+    forbidNonWhitelisted: true, // Se genera un error si se envían propiedades adicionales
+    transform: true, // Transformar los parámetros de cadena a sus tipos correctos
   }));
 
-  // Enable CORS
+  // Habilitar CORS
   app.enableCors();
 
   const port = process.env.PORT || 3000;
