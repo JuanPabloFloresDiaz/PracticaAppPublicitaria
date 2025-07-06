@@ -64,11 +64,11 @@ Cada tabla incluye los campos `created_at`, `updated_at` y `deleted_at` para aud
 
 * **Estado y datos**:
 
-  * `@tanstack/vue-db` (^0.0.13)
-  * `@tanstack/vue-form` (^1.12.4)
-  * `@tanstack/vue-query` (^5.81.5)
-  * `@tanstack/vue-table` (^8.21.3)
-  * `@tanstack/vue-virtual` (^3.13.12)
+  * `@tanstack/vue-db`
+  * `@tanstack/vue-form`
+  * `@tanstack/vue-query`
+  * `@tanstack/vue-table`
+  * `@tanstack/vue-virtual`
 
 * **Editor de texto**: CKEditor 5 para la creación de contenido rico en noticias y descripciones.- **Editor de texto**: CKEditor 5 para la creación de contenido rico en noticias y descripciones.
 
