@@ -14,4 +14,4 @@ import { CampaignNews } from './entities/campaign-news.entity';
   providers: [CampaignsService],
   exports: [CampaignsService, TypeOrmModule]
 })
-export class CampaignsModule {}
+export class CampaignsModule { }

@@ -60,7 +60,7 @@ export class CampaignsService {
             throw new NotFoundException(`Campaign with ID ${id} not found`);
         }
     }
-    
+
     // Campaign Detail CRUD
     // Método para crear un detalle de campaña
     async createCampaignDetail(createCampaignDetailDto: CreateCampaignDetailDto): Promise<CampaignDetail> {

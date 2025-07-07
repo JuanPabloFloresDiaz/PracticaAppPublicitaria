@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, // Eliminar propiedades que no están en el DTO

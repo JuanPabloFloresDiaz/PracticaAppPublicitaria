@@ -2,39 +2,39 @@ import { IsString, IsOptional, IsUUID, IsBoolean, IsObject, IsUrl } from 'class-
 import { Type } from 'class-transformer';
 
 export class CreateCampaignNewsDto {
-  @IsUUID()
-  campaign_id: string;
+    @IsUUID()
+    campaign_id: string;
 
-  @IsString()
-  title: string;
+    @IsString()
+    title: string;
 
-  @IsOptional()
-  @IsString()
-  subtitle?: string;
+    @IsOptional()
+    @IsString()
+    subtitle?: string;
 
-  @IsUrl()
-  @IsOptional()
-  @IsString()
-  thumbnail?: string;
+    @IsUrl()
+    @IsOptional()
+    @IsString()
+    thumbnail?: string;
 
-  @IsUrl()
-  @IsOptional()
-  @IsString()
-  hero_image?: string;
+    @IsUrl()
+    @IsOptional()
+    @IsString()
+    hero_image?: string;
 
-  @IsOptional()
-  @IsObject()
-  tags?: Record<string, any>;
+    @IsOptional()
+    @IsObject()
+    tags?: Record<string, any>;
 
-  @IsOptional()
-  @IsBoolean()
-  @Type(() => Boolean)
-  is_public?: boolean;
+    @IsOptional()
+    @IsBoolean()
+    @Type(() => Boolean)
+    is_public?: boolean;
 
-  @IsString()
-  content: string;
+    @IsString()
+    content: string;
 
-  @IsOptional()
-  @IsString()
-  author?: string;
+    @IsOptional()
+    @IsString()
+    author?: string;
 }
