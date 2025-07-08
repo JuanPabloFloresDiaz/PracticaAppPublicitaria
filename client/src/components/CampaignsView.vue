@@ -57,9 +57,6 @@
             <v-icon color="primary" class="mr-2">mdi-bullhorn</v-icon>
             <div>
               <div class="font-weight-bold">{{ item.name }}</div>
-              <div class="text-caption text-grey" v-if="item.description">
-                {{ item.description }}
-              </div>
             </div>
           </div>
         </template>
