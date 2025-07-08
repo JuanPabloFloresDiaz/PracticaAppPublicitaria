@@ -124,6 +124,7 @@ import { watch } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation } from '@tanstack/vue-query'
 import { createCampaign } from '@/services/campaigns.service'
+import { fireToast } from '@/plugins/sweetalert2'
 import { z } from 'zod'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
@@ -210,10 +211,20 @@ const form = useForm({
 const createMutation = useMutation({
   mutationFn: createCampaign,
   onSuccess: () => {
+    fireToast({
+      icon: 'success',
+      title: 'Campaña creada correctamente'
+    })
     emit('created')
     form.reset()
   },
-  onError: (err) => console.error('Error creando campaña:', err),
+  onError: (err) => {
+    console.error('Error creando campaña:', err)
+    fireToast({
+      icon: 'error',
+      title: 'Error al crear la campaña'
+    })
+  },
 })
 
 // -------------------------------
@@ -233,12 +244,12 @@ watch(() => props.modelValue, (open) => {
 
 <style scoped>
 .v-card-title {
-  background-color: rgba(25, 118, 210, 0.05);
-  border-bottom: 1px solid rgba(25, 118, 210, 0.1);
+  background-color: rgba(124, 58, 237, 0.05);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
 }
 
 .error--text {
-  color: #b00020;
+  color: #EF4444;
 }
 
 /* Estilos para Quill Editor */
@@ -276,7 +287,7 @@ watch(() => props.modelValue, (open) => {
 }
 
 .text-error {
-  color: #b00020;
+  color: #EF4444;
   font-size: 12px;
 }
 </style>
