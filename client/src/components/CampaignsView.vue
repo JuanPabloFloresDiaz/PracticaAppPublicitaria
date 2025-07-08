@@ -170,6 +170,7 @@
       :item-name="selectedItem?.name"
       entity-name="campaña"
       @confirmed="handleDelete"
+      @cancelled="handleDeleteCancel"
     />
   </div>
 </template>
@@ -182,6 +183,7 @@ import { getAllCampaigns, removeCampaign } from '@/services/campaigns.service'
 import CreateModalCampaigns from '@/components/Modals/Create/CreateModalCampaigns.vue'
 import UpdateModalCampaigns from '@/components/Modals/Update/UpdateModalCampaigns.vue'
 import DeleteModal from '@/components/Modals/Delete/DeleteModal.vue'
+import { fireToast } from '@/plugins/sweetalert2'
 import dayjs from 'dayjs'
 
 const router = useRouter()
@@ -307,13 +309,30 @@ const handleUpdated = () => {
 const handleDelete = async () => {
   try {
     await removeCampaign(selectedItem.value.id)
+    fireToast({ 
+      icon: 'success', 
+      title: 'Campaña eliminada exitosamente' 
+    })
     deleteDialog.value = false
     selectedItem.value = null
     queryClient.invalidateQueries(['campaigns'])
     refetch()
   } catch (error) {
     console.error('Error al eliminar campaña:', error)
+    fireToast({ 
+      icon: 'error', 
+      title: 'Error al eliminar la campaña' 
+    })
   }
+}
+
+const handleDeleteCancel = () => {
+  fireToast({ 
+    icon: 'info', 
+    title: 'Eliminación cancelada' 
+  })
+  deleteDialog.value = false
+  selectedItem.value = null
 }
 </script>
 
