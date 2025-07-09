@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID, IsBoolean, IsObject, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsBoolean, IsArray, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCampaignNewsDto {
@@ -23,8 +23,9 @@ export class CreateCampaignNewsDto {
     hero_image?: string;
 
     @IsOptional()
-    @IsObject()
-    tags?: Record<string, any>;
+    @IsArray()
+    @IsString({ each: true })
+    tags?: string[];
 
     @IsOptional()
     @IsBoolean()

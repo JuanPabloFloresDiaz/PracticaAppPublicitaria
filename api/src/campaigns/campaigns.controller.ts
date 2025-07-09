@@ -81,7 +81,7 @@ export class CampaignsController {
         return this.campaignsService.createCampaignNews(createCampaignNewsDto);
     }
     // Obtener todas las noticias de campañas
-    @Get('news')
+    @Get('news/all')
     findAllCampaignNews() {
         return this.campaignsService.findAllCampaignNews();
     }
