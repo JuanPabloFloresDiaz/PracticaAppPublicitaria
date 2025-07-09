@@ -12,7 +12,7 @@ const RESOURCE = 'campaigns/news';
  * @returns {Promise<Array<Object>>} Una promesa con la lista de noticias de campañas.
  */
 export const getAllCampaignNews = async () => {
-    return AxiosRequest(`${RESOURCE}`, mapMethod('R'));
+    return AxiosRequest(`${RESOURCE}/all`, mapMethod('R'));
 };
 
 /**
