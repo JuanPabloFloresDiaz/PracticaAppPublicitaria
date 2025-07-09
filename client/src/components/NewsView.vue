@@ -334,7 +334,7 @@
       </v-data-table>
     </v-card>
 
-    <!-- Modales (sin cambios) -->
+    <!-- Modales -->
     <CreateModalNews
       v-model="createDialog"
       @created="handleCreated"
@@ -357,7 +357,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/vue-query'
 import { getAllCampaignNews, removeCampaignNews } from '@/services/campaigns_news.service'
 import CreateModalNews from '@/components/Modals/Create/CreateModalNews.vue'
@@ -367,6 +368,8 @@ import { fireToast } from '@/plugins/sweetalert2'
 import dayjs from 'dayjs'
 
 const queryClient = useQueryClient()
+const router = useRouter()
+const route = useRoute()
 
 // State
 const globalFilter = ref('')
@@ -499,7 +502,8 @@ const deleteItem = (item) => {
 }
 
 const viewItem = (item) => {
-  console.log('Ver noticia:', item)
+  // Navegar a la página de detalle
+  router.push(`/NewsDetail/${item.id}`)
 }
 
 const handleCreated = () => {
@@ -511,6 +515,8 @@ const handleUpdated = () => {
   updateDialog.value = false
   selectedItem.value = null
   queryClient.invalidateQueries(['campaign-news'])
+  // Limpiar query parameters
+  router.replace({ query: {} })
 }
 
 const handleDelete = async () => {
@@ -518,6 +524,8 @@ const handleDelete = async () => {
     await deleteMutation.mutateAsync(selectedItem.value.id)
     deleteDialog.value = false
     selectedItem.value = null
+    // Limpiar query parameters
+    router.replace({ query: {} })
   } catch (error) {
     console.error('Error al eliminar noticia:', error)
   }
@@ -529,7 +537,42 @@ const handleDeleteCancel = () => {
   })
   deleteDialog.value = false
   selectedItem.value = null
+  // Limpiar query parameters
+  router.replace({ query: {} })
 }
+
+// Manejar query parameters para edición y eliminación
+const handleQueryParams = () => {
+  const editId = route.query.edit
+  const deleteId = route.query.delete
+  
+  if (editId && news.value) {
+    const item = news.value.find(n => n.id === editId)
+    if (item) {
+      selectedItem.value = item
+      updateDialog.value = true
+    }
+  }
+  
+  if (deleteId && news.value) {
+    const item = news.value.find(n => n.id === deleteId)
+    if (item) {
+      selectedItem.value = item
+      deleteDialog.value = true
+    }
+  }
+}
+
+// Watch para cambios en la query y en los datos
+watch(() => route.query, handleQueryParams)
+watch(news, handleQueryParams)
+
+// Ejecutar al montar el componente
+onMounted(() => {
+  if (news.value) {
+    handleQueryParams()
+  }
+})
 </script>
 
 <style scoped>

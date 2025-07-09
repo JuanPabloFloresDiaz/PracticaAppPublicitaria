@@ -167,6 +167,8 @@
                 elevation="2" 
                 class="news-card h-100"
                 :color="$vuetify.theme.current.dark ? 'surface-container' : 'surface'"
+                @click="viewNewsDetail(item)"
+                style="cursor: pointer;"
               >
                 <!-- Header de la noticia -->
                 <v-card-title class="pa-4 pb-2">
@@ -323,11 +325,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { getAllCampaigns, getCampaignNewsByCampaignId } from '@/services/campaigns.service'
 import { getAllCampaignNews } from '@/services/campaigns_news.service'
 import dayjs from 'dayjs'
 
+const router = useRouter()
 const selectedCampaignId = ref(null)
 
 // Query para obtener todas las campañas
@@ -414,6 +418,27 @@ const handleCampaignChange = (campaignId) => {
   if (campaignId) {
     refetchNews()
   }
+}
+
+const viewNewsDetail = (newsItem) => {
+  // Navegar a la página de detalle
+  router.push(`/NewsDetail/${newsItem.id}`)
+}
+
+const handleEditNews = (newsItem) => {
+  // Navegar a la página de gestión de noticias con el ID para editar
+  router.push({ 
+    name: 'news',
+    query: { edit: newsItem.id }
+  })
+}
+
+const handleDeleteNews = (newsItem) => {
+  // Navegar a la página de gestión de noticias con confirmación de eliminación
+  router.push({ 
+    name: 'news',
+    query: { delete: newsItem.id }
+  })
 }
 </script>
 
