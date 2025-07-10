@@ -48,7 +48,8 @@
                       ['bold', 'italic', 'underline'],
                       ['link'],
                       [{ list: 'ordered' }, { list: 'bullet' }],
-                      ['image']
+                      ['image'],
+                      ['video'],
                     ]"
                     style="margin-top: 8px; margin-bottom: 8px;"
                   />

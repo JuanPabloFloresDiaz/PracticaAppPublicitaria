@@ -41,7 +41,7 @@
       <div v-if="newsData.hero_image" class="hero-section">
         <v-img
           :src="newsData.hero_image"
-          height="60vh"
+          height="60rem"
           cover
           class="hero-image"
         >
@@ -696,7 +696,7 @@ onMounted(() => {
 
 .hero-section {
   position: relative;
-  height: 60vh;
+  height: 60rem;
   min-height: 500px;
 }
 
