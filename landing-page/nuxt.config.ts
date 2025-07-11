@@ -7,6 +7,9 @@ export default defineNuxtConfig({
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api/v1'
     }
   },
+  css: [
+    '~/assets/css/main.css' 
+  ],
   modules: [
     '@nuxt/eslint',
     '@nuxt/fonts',
@@ -14,7 +17,7 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxt/test-utils',
-    '@nuxt/ui',
+    '@nuxtjs/tailwindcss',
     '@nuxt/content'
   ]
 })
