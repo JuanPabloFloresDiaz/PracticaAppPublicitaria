@@ -25,7 +25,7 @@ La aplicación permite crear y gestionar campañas publicitarias, así como gene
           |
           v
 +--------------------------+
-|  Frontend Público (Astro) |
+|  Frontend Público (Nuxt) |
 +--------------------------+
 ```
 
@@ -80,7 +80,7 @@ Cada tabla incluye los campos `created_at`, `updated_at` y `deleted_at` para aud
 
 ## Frontend Público
 
-* **Generador de sitios estáticos**: Astro
+* **Generador de sitios estáticos**: Nuxt
 * **Objetivo**: Consumir la API y renderizar una landing page con las campañas activas y sus noticias.
 * **Características**:
 
