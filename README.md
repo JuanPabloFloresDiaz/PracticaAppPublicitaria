@@ -25,7 +25,7 @@ La aplicación permite crear y gestionar campañas publicitarias, así como gene
           |
           v
 +--------------------------+
-|  Frontend Público (Nuxt) |
+|  Frontend Público (Nuxt 3) |
 +--------------------------+
 ```
 
@@ -59,34 +59,30 @@ Cada tabla incluye los campos `created_at`, `updated_at` y `deleted_at` para aud
 ## Frontend Administrativo
 
 * **Framework**: Vue 3
-
 * **UI**: Vuetify 3
-
 * **Estado y datos**:
-
   * `@tanstack/vue-db`
   * `@tanstack/vue-form`
   * `@tanstack/vue-query`
   * `@tanstack/vue-table`
   * `@tanstack/vue-virtual`
-
-* **Editor de texto**: CKEditor 5 para la creación de contenido rico en noticias y descripciones.- **Editor de texto**: CKEditor 5 para la creación de contenido rico en noticias y descripciones.
-
-* **Validación**: Zod para esquemas y validación de formularios.
-
-* **Otras tecnologías**: Axios para llamadas HTTP, Pinia para estado global.
+* **Editor de texto**: Quill Editor (`@vueup/vue-quill`) para la creación de contenido rico en noticias y descripciones.
+* **Validación**: Vuelidate (`@vuelidate/core`) para esquemas y validación de formularios.
+* **Otras tecnologías**: Axios para llamadas HTTP, SweetAlert2 para notificaciones, Dayjs para manejo de fechas.
 
 ---
 
 ## Frontend Público
 
-* **Generador de sitios estáticos**: Nuxt
+* **Framework**: Nuxt 3
+* **Styling**: Tailwind CSS
 * **Objetivo**: Consumir la API y renderizar una landing page con las campañas activas y sus noticias.
 * **Características**:
-
   * Listado de campañas con fechas y presupuesto.
   * Vista detallada con noticias filtradas por campaña.
   * SEO optimizado y generación estática para rendimiento.
+  * Manejo de imágenes optimizado con `@nuxt/image`.
+  * Iconografía con `@nuxt/icon`.
 
 ---
 
@@ -95,15 +91,15 @@ Cada tabla incluye los campos `created_at`, `updated_at` y `deleted_at` para aud
 * **Base de datos**: PostgreSQL
 * **Servidor**: NestJS, TypeORM, TypeScript
 * **Frontend Admin**: Vue 3, Vuetify 3,
-
   * `@tanstack/vue-db`
   * `@tanstack/vue-form`
   * `@tanstack/vue-query`
   * `@tanstack/vue-table`
   * `@tanstack/vue-virtual`
-  * CKEditor 5
-  * Zod
-* **Frontend Público**: Astro
+  * Quill Editor (`@vueup/vue-quill`)
+  * Vuelidate (`@vuelidate/core`)
+  * SweetAlert2, Dayjs, Axios
+* **Frontend Público**: Nuxt 3, Tailwind CSS, `@nuxt/image`, `@nuxt/icon`
 * **Control de versiones**: Git + GitHub
 
 ---
