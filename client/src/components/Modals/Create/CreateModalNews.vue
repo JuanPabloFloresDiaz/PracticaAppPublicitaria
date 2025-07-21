@@ -213,7 +213,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="handleSubmit"
+          @click="form.handleSubmit()"
           :loading="createMutation.isPending.value"
         >
           Crear Noticia
@@ -224,13 +224,14 @@
 </template>
 
 <script setup>
-import { watch, computed } from 'vue'
+import { watch, computed, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation, useQuery } from '@tanstack/vue-query'
 import { createCampaignNews } from '@/services/campaigns_news.service'
 import { getAllCampaigns } from '@/services/campaigns.service'
 import { fireToast } from '@/plugins/sweetalert2'
-import { z } from 'zod'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, maxLength, helpers } from '@vuelidate/validators'
 
 // Props & emits
 const props = defineProps({
@@ -265,6 +266,22 @@ const predefinedTags = [
   'Oferta'
 ]
 
+// Función para validar URLs
+const isValidUrl = (string) => {
+  if (!string || string === '') return true
+  try {
+    new URL(string)
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
+// Validador personalizado para tags
+const maxTags = (max) => (value) => {
+  return !value || !Array.isArray(value) || value.length <= max
+}
+
 // Query para campañas
 const {
   data: campaigns,
@@ -276,30 +293,53 @@ const {
 
 const campaignOptions = computed(() => campaigns.value || [])
 
-// Función para validar URLs
-const isValidUrl = (string) => {
-  try {
-    new URL(string)
-    return true
-  } catch (_) {
-    return false
+// Datos del formulario
+const formData = reactive({
+  campaign_id: '',
+  title: '',
+  subtitle: '',
+  thumbnail: '',
+  hero_image: '',
+  is_public: false,
+  content: '',
+  author: '',
+  tags: []
+});
+
+// Reglas de validación
+const rules = {
+  campaign_id: {
+    required: helpers.withMessage('La campaña es requerida', required)
+  },
+  title: {
+    required: helpers.withMessage('El título es requerido', required),
+    minLength: helpers.withMessage('El título debe tener al menos 5 caracteres', minLength(5)),
+    maxLength: helpers.withMessage('El título no puede superar los 255 caracteres', maxLength(255))
+  },
+  subtitle: {
+    maxLength: helpers.withMessage('El subtítulo no puede superar los 500 caracteres', maxLength(500))
+  },
+  thumbnail: {
+    url: helpers.withMessage('Debe ser una URL válida', (value) => isValidUrl(value))
+  },
+  hero_image: {
+    url: helpers.withMessage('Debe ser una URL válida', (value) => isValidUrl(value))
+  },
+  content: {
+    required: helpers.withMessage('El contenido es requerido', required),
+    minLength: helpers.withMessage('El contenido debe tener al menos 20 caracteres', minLength(20))
+  },
+  author: {
+    maxLength: helpers.withMessage('El autor no puede superar los 255 caracteres', maxLength(255))
+  },
+  tags: {
+    maxTags: helpers.withMessage('No puedes agregar más de 10 tags', maxTags(10))
   }
-}
+};
 
-// Esquema de validación con Zod
-const newsSchema = z.object({
-  campaign_id: z.string().min(1, 'La campaña es requerida'),
-  title: z.string().min(5, 'El título debe tener al menos 5 caracteres').max(255, 'El título no puede superar los 255 caracteres'),
-  subtitle: z.string().max(500, 'El subtítulo no puede superar los 500 caracteres').optional().or(z.literal('')),
-  thumbnail: z.string().refine(val => !val || isValidUrl(val), 'Debe ser una URL válida').optional().or(z.literal('')),
-  hero_image: z.string().refine(val => !val || isValidUrl(val), 'Debe ser una URL válida').optional().or(z.literal('')),
-  is_public: z.boolean(),
-  content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres'),
-  author: z.string().max(255, 'El autor no puede superar los 255 caracteres').optional().or(z.literal('')),
-  tags: z.array(z.string()).max(10, 'No puedes agregar más de 10 tags').optional()
-})
+// Inicializar Vuelidate
+const $v = useVuelidate(rules, formData);
 
-// Configuración del formulario
 const form = useForm({
   defaultValues: {
     campaign_id: '',
@@ -314,38 +354,37 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
-      // Filtrar campos vacíos
-      const cleanData = {}
-      Object.keys(value).forEach((key) => {
-        const v = value[key]
-        if (v !== '' && v != null) {
-          if (key === 'tags' && Array.isArray(v) && v.length === 0) {
-            return // No incluir array de tags vacío
+      // Normalizar contenido de Quill Editor para la validación
+      if (value.content === '<p><br></p>' || value.content === '') {
+        formData.content = '';
+      } else {
+        formData.content = value.content;
+      }
+
+      formData.campaign_id = value.campaign_id;
+      formData.title = value.title;
+      formData.subtitle = value.subtitle;
+      formData.thumbnail = value.thumbnail;
+      formData.hero_image = value.hero_image;
+      formData.is_public = value.is_public;
+      formData.author = value.author;
+      formData.tags = value.tags;
+
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
           }
-          cleanData[key] = v
         }
-      })
-
-      // Normalizar contenido de Quill Editor
-      if (cleanData.content === '<p><br></p>' || cleanData.content === '') {
-        cleanData.content = ''
+        return { fields: errors };
       }
-
-      // Validación Zod
-      const parsed = newsSchema.safeParse(cleanData)
-      if (!parsed.success) {
-        const errors = {}
-        parsed.error.issues.forEach((issue) => {
-          errors[issue.path[0]] = issue.message
-        })
-        return { fields: errors }
-      }
-
-      return null
+      return null;
     },
   },
   onSubmit: async ({ value }) => {
-    // Limpiar datos vacíos antes de enviar
     const cleanData = {}
     Object.keys(value).forEach(key => {
       const v = value[key]
@@ -365,6 +404,11 @@ const form = useForm({
   }
 })
 
+// Sincronizar formData con los valores de TanStack Form
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
+
 // Configuración de la mutación
 const createMutation = useMutation({
   mutationFn: createCampaignNews,
@@ -375,6 +419,7 @@ const createMutation = useMutation({
     })
     emit('created')
     form.reset()
+    $v.value.$reset(); 
   },
   onError: (err) => {
     console.error('Error creando noticia:', err)
@@ -386,15 +431,27 @@ const createMutation = useMutation({
 })
 
 // Handlers
-const handleSubmit = () => form.handleSubmit()
+const handleSubmit = async () => {
+  $v.value.$touch();
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return;
+  }
+  await form.handleSubmit(); 
+}
+
 const handleCancel = () => {
   form.reset()
+  $v.value.$reset();
   emit('update:modelValue', false)
 }
 
 // Resetear al cerrar
 watch(() => props.modelValue, (open) => {
-  if (!open) form.reset()
+  if (!open) {
+    form.reset();
+    $v.value.$reset();
+  }
 })
 </script>
 

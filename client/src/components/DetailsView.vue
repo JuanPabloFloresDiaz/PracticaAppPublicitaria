@@ -1,6 +1,5 @@
 <template>
   <div class="details-view">
-    <!-- Header mejorado -->
     <v-card 
       :color="$vuetify.theme.current.dark ? 'surface-container-high' : 'surface-bright'"
       class="mb-6"
@@ -41,7 +40,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Campaign Info Card mejorada -->
     <v-card 
       v-if="campaign" 
       class="mb-6"
@@ -51,7 +49,6 @@
       <v-card-text class="pa-6">
         <v-row>
           <v-col cols="12" lg="8">
-            <!-- Título de la campaña -->
             <div class="d-flex align-center mb-4">
               <v-avatar size="48" color="primary-lighten-1" class="mr-4">
                 <v-icon color="white" size="24">mdi-bullhorn</v-icon>
@@ -71,7 +68,6 @@
               </div>
             </div>
 
-            <!-- Descripción con HTML renderizado -->
             <v-card 
               v-if="campaign.description" 
               variant="tonal"
@@ -90,7 +86,6 @@
               </v-card-text>
             </v-card>
 
-            <!-- Chips de información -->
             <div class="d-flex flex-wrap ga-2">
               <v-chip 
                 v-if="campaign.budget" 
@@ -122,7 +117,6 @@
             </div>
           </v-col>
           
-          <!-- Estadísticas laterales -->
           <v-col cols="12" lg="4">
             <v-card 
               variant="outlined" 
@@ -144,7 +138,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Campaign Details Table mejorada -->
     <v-card elevation="2">
       <v-card-title class="pa-6 d-flex align-center">
         <v-avatar size="32" color="primary-lighten-1" class="mr-3">
@@ -172,7 +165,6 @@
       >
         <template v-slot:[`item.description`]="{ item }">
           <div class="py-3">
-            <!-- Descripción principal con HTML renderizado -->
             <v-card 
               variant="tonal" 
               color="on-surface-variant"
@@ -186,7 +178,6 @@
               </v-card-text>
             </v-card>
             
-            <!-- Información extra si existe -->
             <div 
               v-if="item.extra_info" 
               class="text-caption text-on-surface-variant"
@@ -254,7 +245,6 @@
       </v-data-table>
     </v-card>
 
-    <!-- Modales (sin cambios) -->
     <CreateModalCampaignsDetail
       v-model="createDialog"
       :campaign-id="campaignId"

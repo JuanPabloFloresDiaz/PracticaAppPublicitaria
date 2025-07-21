@@ -138,7 +138,6 @@
         </v-img>
       </div>
 
-      <!-- Navigation Bar (cuando no hay hero image) -->
       <div v-else>
         <v-card 
           class="top-nav"
@@ -183,7 +182,6 @@
       <!-- Main Content -->
       <div class="main-content">
         <v-container max-width="1200" class="py-8">
-          <!-- Header (cuando no hay hero image) -->
           <div v-if="!newsData.hero_image" class="content-header mb-8">
             <v-card 
               :color="$vuetify.theme.current.dark ? 'surface-container-high' : 'surface-bright'"
@@ -245,7 +243,6 @@
           <v-row>
             <!-- Main Article Content -->
             <v-col cols="12" lg="8">
-              <!-- Thumbnail (cuando no hay hero image) -->
               <div v-if="newsData.thumbnail && !newsData.hero_image" class="mb-8">
                 <v-card elevation="4" class="overflow-hidden">
                   <v-img
@@ -406,7 +403,6 @@
                 </v-card-text>
               </v-card>
 
-              <!-- Campaign Info - CORREGIDO AQUÍ -->
               <v-card v-if="newsData.campaign" elevation="2" class="mb-6">
                 <v-card-title class="pa-4">
                   <div class="d-flex align-center">
@@ -429,7 +425,6 @@
                     </h3>
                   </div>
                   
-                  <!-- AQUÍ ESTÁ LA CORRECCIÓN: Usar v-html en lugar de {{ }} -->
                   <div v-if="newsData.campaign.description" class="mb-4">
                     <div class="text-caption text-on-surface-variant mb-2">
                       <v-icon size="14" class="mr-1">mdi-text-box</v-icon>
@@ -577,13 +572,12 @@ const {
 } = useQuery({
   queryKey: ['campaign-news-detail', newsId],
   queryFn: () => getCampaignNewsById(newsId.value),
-  enabled: true // Always enabled to ensure hooks are called at the top level
+  enabled: true 
 })
 
 // Computed
 const contentLength = computed(() => {
   if (!newsData.value?.content) return 0
-  // Remover tags HTML para contar solo el texto
   const textContent = newsData.value.content.replace(/<[^>]*>/g, '')
   return textContent.length
 })

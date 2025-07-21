@@ -1,6 +1,5 @@
 <template>
   <div class="news-view">
-    <!-- Header mejorado -->
     <v-card 
       :color="$vuetify.theme.current.dark ? 'surface-container-high' : 'surface-bright'"
       class="mb-6"
@@ -34,7 +33,7 @@
       </v-card-text>
     </v-card>
 
-    <!-- Search and Filters mejorado -->
+    <!-- Search and Filters -->
     <v-card 
       class="mb-6" 
       elevation="1"
@@ -96,7 +95,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Estadísticas rápidas -->
     <v-row class="mb-6">
       <v-col cols="12" sm="6" md="3">
         <v-card 
@@ -152,7 +150,6 @@
       </v-col>
     </v-row>
 
-    <!-- Data Table mejorada -->
     <v-card elevation="2">
       <v-card-title class="pa-6 d-flex align-center">
         <v-avatar size="32" color="primary-lighten-1" class="mr-3">
@@ -334,7 +331,6 @@
       </v-data-table>
     </v-card>
 
-    <!-- Modales -->
     <CreateModalNews
       v-model="createDialog"
       @created="handleCreated"
@@ -515,7 +511,6 @@ const handleUpdated = () => {
   updateDialog.value = false
   selectedItem.value = null
   queryClient.invalidateQueries(['campaign-news'])
-  // Limpiar query parameters
   router.replace({ query: {} })
 }
 
@@ -524,7 +519,6 @@ const handleDelete = async () => {
     await deleteMutation.mutateAsync(selectedItem.value.id)
     deleteDialog.value = false
     selectedItem.value = null
-    // Limpiar query parameters
     router.replace({ query: {} })
   } catch (error) {
     console.error('Error al eliminar noticia:', error)
@@ -537,7 +531,6 @@ const handleDeleteCancel = () => {
   })
   deleteDialog.value = false
   selectedItem.value = null
-  // Limpiar query parameters
   router.replace({ query: {} })
 }
 

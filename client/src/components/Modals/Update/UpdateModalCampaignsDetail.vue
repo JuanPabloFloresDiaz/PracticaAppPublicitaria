@@ -85,7 +85,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="handleSubmit"
+          @click="form.handleSubmit()"
           :loading="updateMutation.isPending.value"
         >
           Actualizar Detalle
@@ -96,17 +96,15 @@
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { watch, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation } from '@tanstack/vue-query'
 import { updateCampaignDetail } from '@/services/campaigns_details.service'
-import { fireToast } from '@/plugins/sweetalert2' // Asumiendo que tienes fireToast
-import { z } from 'zod'
-// NO IMPORTAR QuillEditor aquí, ya está registrado globalmente en plugins/index.js
-// import { QuillEditor } from '@vueup/vue-quill'
-// import '@vueup/vue-quill/dist/quill.snow.css'
+import { fireToast } from '@/plugins/sweetalert2'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, helpers } from '@vuelidate/validators'
 
-// Props que el modal recibe
+// Props
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -114,20 +112,18 @@ const props = defineProps({
   },
   item: {
     type: Object,
-    default: null // El objeto de detalle de campaña a editar
+    default: null 
   }
 })
 
-// Eventos que el modal puede emitir
+// Emits
 const emit = defineEmits([
-  'update:modelValue', // Para controlar la visibilidad del modal
-  'updated' // Para notificar que un detalle ha sido actualizado
+  'update:modelValue', 
+  'updated' 
 ])
 
-// Variable para almacenar los datos originales del item para comparar cambios
 let originalData = null
 
-// Función de utilidad para clonar objetos profundamente
 const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj))
 }
@@ -143,17 +139,12 @@ const getChangedProperties = (original, current) => {
       let currentValue = current[key];
 
       // --- Normalización para comparación consistente ---
-      // Convertir null/undefined a cadena vacía para campos de texto
       if (originalValue === null || originalValue === undefined) originalValue = '';
       if (currentValue === null || currentValue === undefined) currentValue = '';
-
-      // Manejo especial para la descripción de Quill Editor
-      // Si el valor es "<p><br></p>", se considera vacío para la comparación
       if (key === 'description') {
         if (originalValue === '<p><br></p>') originalValue = '';
         if (currentValue === '<p><br></p>') currentValue = '';
       }
-      // --- Fin Normalización ---
 
       if (originalValue !== currentValue) {
         changes[key] = current[key]
@@ -164,13 +155,27 @@ const getChangedProperties = (original, current) => {
   return hasChanges ? changes : null
 }
 
-// Esquema de validación con Zod
-const detailSchema = z.object({
-  description: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  extra_info: z.string().min(10, 'La información adicional debe tener al menos 10 caracteres'),
-})
+// Datos del formulario
+const formData = reactive({
+  description: '',
+  extra_info: ''
+});
 
-// Configuración del formulario con TanStack Form
+// Reglas de validación
+const rules = {
+  description: {
+    required: helpers.withMessage('La descripción es requerida', required),
+    minLength: helpers.withMessage('La descripción debe tener al menos 10 caracteres', minLength(10))
+  },
+  extra_info: {
+    required: helpers.withMessage('La información adicional es requerida', required),
+    minLength: helpers.withMessage('La información adicional debe tener al menos 10 caracteres', minLength(10))
+  }
+};
+
+// Inicializar
+const $v = useVuelidate(rules, formData);
+
 const form = useForm({
   defaultValues: {
     description: '',
@@ -178,47 +183,46 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
-      // Normalizar la descripción si es el HTML vacío de Quill
-      const cleanDescription = (value.description === '<p><br></p>' || value.description === '') ? '' : value.description;
+      if (value.description === '<p><br></p>' || value.description === '') {
+        formData.description = ''; 
+      } else {
+        formData.description = value.description;
+      }
 
-      const parsed = detailSchema.safeParse({
-        description: cleanDescription,
-        extra_info: value.extra_info
-      });
+      formData.extra_info = value.extra_info;
 
-      if (!parsed.success) {
-        const errors = {}
-        parsed.error.issues.forEach((issue) => {
-          errors[issue.path[0]] = issue.message
-        })
-        return { fields: errors }
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
+          }
+        }
+        return { fields: errors };
       }
       return null
     },
   },
   onSubmit: async ({ value }) => {
-    if (!props.item) return // No proceder si no hay item
-
-    // Limpiar datos vacíos antes de enviar
+    if (!props.item) return 
     const cleanData = { ...value };
     if (cleanData.description === '<p><br></p>' || cleanData.description === '') {
       cleanData.description = '';
     }
 
-    // Obtener solo los campos que cambiaron comparando con los datos originales
     const changes = getChangedProperties(originalData, cleanData)
 
     if (!changes) {
-      // Si no hay cambios detectados, mostrar mensaje con SweetAlert2
       fireToast({
         icon: 'info',
         title: 'No se han detectado cambios para actualizar'
       })
-      emit('updated') // Emitir updated para que se cierre el modal
+      emit('updated') 
       return
     }
 
-    // Ejecutar la mutación con el ID del item y solo los datos que cambiaron
     await updateMutation.mutateAsync({
       id: props.item.id,
       data: changes
@@ -226,16 +230,19 @@ const form = useForm({
   }
 })
 
-// Configuración de la mutación para actualizar el detalle de campaña
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
+
 const updateMutation = useMutation({
-  mutationFn: ({ id, data }) => updateCampaignDetail(id, data), // Llama al servicio de actualización
+  mutationFn: ({ id, data }) => updateCampaignDetail(id, data),
   onSuccess: () => {
     fireToast({
       icon: 'success',
       title: 'Detalle de campaña actualizado correctamente'
     })
-    emit('updated') // Emite el evento 'updated' para que la vista padre sepa que se actualizó
-    resetForm() // Reinicia el formulario
+    emit('updated') 
+    resetForm() 
   },
   onError: (error) => {
     console.error('Error al actualizar detalle de campaña:', error)
@@ -246,22 +253,26 @@ const updateMutation = useMutation({
   }
 })
 
-// Métodos para manejar la UI del modal
 const handleCancel = () => {
-  resetForm() // Reinicia el formulario
-  emit('update:modelValue', false) // Cierra el modal
+  resetForm() 
+  emit('update:modelValue', false)
 }
 
-const handleSubmit = () => {
-  form.handleSubmit() // Dispara el proceso de envío del formulario
+const handleSubmit = async () => {
+  $v.value.$touch(); 
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return;
+  }
+  await form.handleSubmit(); 
 }
 
 const resetForm = () => {
-  form.reset() // Reinicia los valores del formulario a sus valores por defecto
-  originalData = null // Limpia los datos originales
+  form.reset() 
+  originalData = null 
+  $v.value.$reset(); 
 }
 
-// Función para cargar los datos del item recibido en el formulario
 const loadItemData = (item) => {
   if (!item) return
 
@@ -270,52 +281,47 @@ const loadItemData = (item) => {
     extra_info: item.extra_info || ''
   };
 
-  // Normalizar la descripción si es el HTML vacío de Quill
   if (initialValues.description === '<p><br></p>') {
     initialValues.description = '';
   }
 
-  // Guardar una copia profunda de estos valores NORMALIZADOS como datos originales
   originalData = deepClone(initialValues);
 
-  // Cargar datos en el formulario usando setTimeout para asegurar que el DOM esté listo
   setTimeout(() => {
     form.setFieldValue('description', initialValues.description)
     form.setFieldValue('extra_info', initialValues.extra_info)
+    Object.assign(formData, initialValues);
   }, 100)
 
   console.log('Form values loaded:', initialValues);
   console.log('Original data for comparison:', originalData);
 }
 
-// Observador para cuando la prop 'item' cambie y el modal esté abierto
 watch(() => props.item, (newItem) => {
   if (newItem && props.modelValue) {
-    loadItemData(newItem) // Carga los datos si el item cambia y el modal está visible
+    loadItemData(newItem) 
   }
-}, { immediate: true }) // Ejecuta el watcher inmediatamente si ya hay un item al montar
+}, { immediate: true })
 
-// Observador para cuando el modal se abre o se cierra
 watch(() => props.modelValue, (newValue) => {
   if (newValue && props.item) {
-    loadItemData(props.item) // Si se abre y hay un item, carga los datos
+    loadItemData(props.item) 
   } else if (!newValue) {
-    resetForm() // Si se cierra, reinicia el formulario
+    resetForm() 
   }
 })
 </script>
 
 <style scoped>
 .v-card-title {
-  background-color: rgba(25, 118, 210, 0.05); /* Puedes ajustar el color si Campaigns usa otro */
-  border-bottom: 1px solid rgba(25, 118, 210, 0.1); /* Puedes ajustar el color */
+  background-color: rgba(25, 118, 210, 0.05); 
+  border-bottom: 1px solid rgba(25, 118, 210, 0.1); 
 }
 
 .error--text {
-  color: #b00020; /* Color de error de Vuetify */
+  color: #b00020; 
 }
 
-/* Estilos para Quill Editor */
 :deep(.ql-editor) {
   min-height: 120px;
   font-family: 'Roboto', sans-serif;

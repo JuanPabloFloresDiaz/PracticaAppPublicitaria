@@ -85,7 +85,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="handleSubmit"
+          @click="form.handleSubmit()"
           :loading="createMutation.isPending.value"
         >
           Crear Detalle
@@ -96,15 +96,13 @@
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { watch, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation } from '@tanstack/vue-query'
 import { createCampaignDetail } from '@/services/campaigns_details.service'
-import { fireToast } from '@/plugins/sweetalert2' // Asumiendo que tienes fireToast
-import { z } from 'zod'
-// NO IMPORTAR QuillEditor aquí, ya está registrado globalmente en plugins/index.js
-// import { QuillEditor } from '@vueup/vue-quill'
-// import '@vueup/vue-quill/dist/quill.snow.css'
+import { fireToast } from '@/plugins/sweetalert2'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, helpers } from '@vuelidate/validators'
 
 // Props y emits
 const props = defineProps({
@@ -113,13 +111,28 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue','created'])
 
-// Esquema de validación con Zod
-const detailSchema = z.object({
-  description: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  extra_info: z.string().min(10, 'La información adicional debe tener al menos 10 caracteres'),
-})
+// Datos del formulario
+const formData = reactive({
+  description: '',
+  extra_info: ''
+});
 
-// Configuramos el form
+// Reglas de validación
+const rules = {
+  description: {
+    required: helpers.withMessage('La descripción es requerida', required),
+    minLength: helpers.withMessage('La descripción debe tener al menos 10 caracteres', minLength(10))
+  },
+  extra_info: {
+    required: helpers.withMessage('La información adicional es requerida', required),
+    minLength: helpers.withMessage('La información adicional debe tener al menos 10 caracteres', minLength(10))
+  }
+};
+
+// Inicializar Vuelidate
+const $v = useVuelidate(rules, formData);
+
+// Formulario de TanStack
 const form = useForm({
   defaultValues: {
     description: '',
@@ -127,26 +140,30 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
-      // Normalizar la descripción si es el HTML vacío de Quill
-      const cleanDescription = (value.description === '<p><br></p>' || value.description === '') ? '' : value.description;
-      
-      const parsed = detailSchema.safeParse({
-        description: cleanDescription,
-        extra_info: value.extra_info
-      });
-
-      if (!parsed.success) {
-        const errors = {}
-        parsed.error.issues.forEach((issue) => {
-          errors[issue.path[0]] = issue.message
-        })
-        return { fields: errors }
+      // Normalizar contenido de Quill Editor para la validación
+      if (value.description === '<p><br></p>' || value.description === '') {
+        formData.description = ''; 
+      } else {
+        formData.description = value.description;
       }
-      return null
+
+      formData.extra_info = value.extra_info;
+
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
+          }
+        }
+        return { fields: errors };
+      }
+      return null;
     },
   },
   onSubmit: async ({ value }) => {
-    // Normalizar la descripción si es el HTML vacío de Quill antes de enviar
     const payload = {
       ...value,
       description: (value.description === '<p><br></p>' || value.description === '') ? '' : value.description,
@@ -156,6 +173,11 @@ const form = useForm({
     await createMutation.mutateAsync(payload)
   }
 })
+
+// Sincronizar formData con los valores de TanStack Form
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
 
 // Mutation
 const createMutation = useMutation({
@@ -167,6 +189,7 @@ const createMutation = useMutation({
     })
     emit('created')
     form.reset()
+    $v.value.$reset();
   },
   onError: (err) => {
     console.error('Error creando detalle de campaña:', err)
@@ -178,26 +201,38 @@ const createMutation = useMutation({
 })
 
 // Handlers
-const handleSubmit = () => form.handleSubmit()
+const handleSubmit = async () => {
+  $v.value.$touch();
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return;
+  }
+  await form.handleSubmit(); 
+}
+
 const handleCancel = () => {
   form.reset()
+  $v.value.$reset(); 
   emit('update:modelValue', false)
 }
 
 // Reseteo al cerrar
 watch(() => props.modelValue, val => {
-  if (!val) form.reset()
+  if (!val) {
+    form.reset();
+    $v.value.$reset();
+  }
 })
 </script>
 
 <style scoped>
 .v-card-title {
-  background-color: rgba(25, 118, 210, 0.05); /* Puedes ajustar el color si Campaigns usa otro */
-  border-bottom: 1px solid rgba(25, 118, 210, 0.1); /* Puedes ajustar el color */
+  background-color: rgba(25, 118, 210, 0.05);
+  border-bottom: 1px solid rgba(25, 118, 210, 0.1);
 }
 
 .error--text {
-  color: #b00020; /* Color de error de Vuetify */
+  color: #b00020; 
 }
 
 /* Estilos para Quill Editor */

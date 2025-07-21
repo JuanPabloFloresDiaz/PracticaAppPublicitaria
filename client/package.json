@@ -17,6 +17,8 @@
     "@tanstack/vue-query": "^5.81.5",
     "@tanstack/vue-table": "^8.21.3",
     "@tanstack/vue-virtual": "^3.13.12",
+    "@vuelidate/core": "^2.0.3",
+    "@vuelidate/validators": "^2.0.4",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.10.0",
     "dayjs": "^1.11.13",

@@ -141,7 +141,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="handleSubmit"
+          @click="form.handleSubmit()"
           :loading="updateMutation.isPending.value"
         >
           Actualizar Campaña
@@ -152,12 +152,13 @@
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { watch, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation } from '@tanstack/vue-query'
 import { updateCampaign } from '@/services/campaigns.service'
 import { fireToast } from '@/plugins/sweetalert2'
-import { z } from 'zod'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, numeric, minValue, helpers } from '@vuelidate/validators'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 
@@ -171,7 +172,7 @@ const props = defineProps({
   },
   item: {
     type: Object,
-    default: null // El objeto de campaña a editar
+    default: null
   }
 })
 
@@ -181,26 +182,21 @@ const emit = defineEmits([
   'updated'
 ])
 
-// Variable para almacenar los datos originales del item para comparar cambios
 let originalData = null
 
-// Función de utilidad para clonar objetos profundamente
 const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj))
 }
 
-// Función de utilidad para obtener solo las propiedades que cambiaron
 const getChangedProperties = (original, current) => {
   const changes = {}
   let hasChanges = false
 
   for (const key in current) {
     if (Object.prototype.hasOwnProperty.call(original, key)) {
-      // Normalizar valores para comparación
       let originalValue = original[key]
       let currentValue = current[key]
       
-      // Convertir null/undefined a string vacío para comparación
       if (originalValue === null || originalValue === undefined) {
         originalValue = ''
       }
@@ -208,7 +204,6 @@ const getChangedProperties = (original, current) => {
         currentValue = ''
       }
       
-      // Para números, convertir a string para comparación
       if (typeof originalValue === 'number') {
         originalValue = originalValue.toString()
       }
@@ -216,9 +211,8 @@ const getChangedProperties = (original, current) => {
         currentValue = currentValue.toString()
       }
       
-      // Comparar valores normalizados
       if (originalValue !== currentValue) {
-        changes[key] = current[key] // Usar el valor original sin normalizar
+        changes[key] = current[key]
         hasChanges = true
       }
     }
@@ -227,19 +221,46 @@ const getChangedProperties = (original, current) => {
   return hasChanges ? changes : null
 }
 
-// Esquema de validación con Zod
-const campaignSchema = z.object({
-  name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-  description: z.string().optional(),
-  budget: z.preprocess(
-    val => (val ? parseFloat(val) : null),
-    z.number().nonnegative('El presupuesto debe ser positivo').nullable()
-  ),
-  start_date: z.string().nonempty('Fecha de inicio requerida'),
-  end_date: z.string().optional(),
-})
+const nonNegative = (value) => value === null || value >= 0;
 
-// Configuración del formulario con TanStack Form
+const dateAfterOrEqual = (comparisonField) => helpers.withMessage(
+  ({ $params }) => `La fecha de fin debe ser posterior o igual a la de inicio`,
+  (value, siblings) => {
+    if (!value || !siblings[comparisonField]) return true;
+    return dayjs(value).isSameOrAfter(dayjs(siblings[comparisonField]), 'day');
+  }
+);
+
+// Datos del formulario
+const formData = reactive({
+  name: '',
+  description: '',
+  start_date: '',
+  end_date: '',
+  budget: null
+});
+
+// Reglas de validación
+const rules = {
+  name: {
+    required: helpers.withMessage('El nombre es requerido', required),
+    minLength: helpers.withMessage('El nombre debe tener al menos 3 caracteres', minLength(3))
+  },
+  description: {}, 
+  budget: {
+    numeric: helpers.withMessage('El presupuesto debe ser un número', numeric),
+    nonNegative: helpers.withMessage('El presupuesto debe ser positivo', nonNegative)
+  },
+  start_date: {
+    required: helpers.withMessage('Fecha de inicio requerida', required)
+  },
+  end_date: {
+    dateAfterOrEqual: dateAfterOrEqual('start_date') 
+  }
+};
+
+const $v = useVuelidate(rules, formData);
+
 const form = useForm({
   defaultValues: {
     name: '',
@@ -250,53 +271,39 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
-      // 1) Filtrar campos vacíos para la validación Zod
-      const cleanData = {}
-      Object.keys(value).forEach((key) => {
-        const v = value[key]
-        // Para la descripción del Quill Editor, si es solo HTML vacío, tratar como vacío
-        if (key === 'description' && (v === '<p><br></p>' || v === '')) {
-          cleanData[key] = '' // Zod lo manejará como optional
-        } else if (v !== '' && v != null) {
-          cleanData[key] = v
-        }
-      })
-
-      // 2) Validación Zod
-      const parsed = campaignSchema.safeParse(cleanData)
-      if (!parsed.success) {
-        const errors = {}
-        parsed.error.issues.forEach((issue) => {
-          errors[issue.path[0]] = issue.message
-        })
-        return { fields: errors }
+      // Normalizar contenido de Quill Editor para la validación
+      if (value.description === '<p><br></p>' || value.description === '') {
+        formData.description = '';
+      } else {
+        formData.description = value.description;
       }
 
-      // 3) Validación de fechas (si ambas están presentes)
-      if (
-        cleanData.start_date &&
-        cleanData.end_date &&
-        !dayjs(cleanData.end_date).isSameOrAfter(cleanData.start_date, 'day')
-      ) {
-        return {
-          fields: {
-            end_date: 'La fecha de fin debe ser posterior o igual a la de inicio',
-          },
+      formData.name = value.name;
+      formData.start_date = value.start_date;
+      formData.end_date = value.end_date;
+      formData.budget = value.budget;
+
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
+          }
         }
+        return { fields: errors };
       }
 
-      // Si todo OK, no devolver errores
       return null
     },
   },
   onSubmit: async ({ value }) => {
     if (!props.item) return
 
-    // Limpiar datos vacíos antes de enviar
     const cleanData = {}
     Object.keys(value).forEach(key => {
       const v = value[key]
-      // Para la descripción del Quill Editor, si es solo HTML vacío, tratar como vacío
       if (key === 'description' && (v === '<p><br></p>' || v === '<p></p>' || v === '')) {
         cleanData[key] = ''
       } else if (v !== '' && v != null) {
@@ -304,26 +311,27 @@ const form = useForm({
       }
     })
 
-    // Obtener solo los campos que cambiaron comparando con los datos originales
     const changes = getChangedProperties(originalData, cleanData)
     
     if (!changes) {
-      // Si no hay cambios detectados, mostrar mensaje con SweetAlert2
       fireToast({
         icon: 'info',
         title: 'No se han detectado cambios para actualizar'
       })
-      emit('updated') // Emitir updated para que se cierre el modal
+      emit('updated') 
       return
     }
 
-    // Ejecutar la mutación con el ID del item y solo los datos que cambiaron
     await updateMutation.mutateAsync({
       id: props.item.id,
       data: changes
     })
   }
 })
+
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
 
 // Mutación para actualizar la campaña
 const updateMutation = useMutation({
@@ -333,8 +341,8 @@ const updateMutation = useMutation({
       icon: 'success',
       title: 'Campaña actualizada correctamente'
     })
-    emit('updated') // Emite el evento 'updated' para que la vista padre sepa que se actualizó
-    resetForm() // Reinicia el formulario
+    emit('updated') 
+    resetForm() 
   },
   onError: (error) => {
     console.error('Error al actualizar campaña:', error)
@@ -345,32 +353,39 @@ const updateMutation = useMutation({
   }
 })
 
-// Métodos para manejar la UI del modal
 const handleCancel = () => {
-  resetForm() // Reinicia el formulario
-  emit('update:modelValue', false) // Cierra el modal
+  resetForm() 
+  emit('update:modelValue', false) 
 }
 
-const handleSubmit = () => {
-  form.handleSubmit() // Dispara el proceso de envío del formulario
+const handleSubmit = async () => {
+  $v.value.$touch(); 
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return; 
+  }
+  await form.handleSubmit();
 }
 
 const resetForm = () => {
-  form.reset() // Reinicia los valores del formulario a sus valores por defecto
-  originalData = null // Limpia los datos originales
+  form.reset()
+  originalData = null
+  $v.value.$reset();
 }
 
 // Función para cargar los datos del item recibido en el formulario
 const loadItemData = (item) => {
   if (!item) return
 
-  originalData = deepClone({
+  const initialValues = {
     name: item.name || '',
     description: item.description || '',
     start_date: item.start_date ? dayjs(item.start_date).format('YYYY-MM-DD') : '',
     end_date: item.end_date ? dayjs(item.end_date).format('YYYY-MM-DD') : '',
     budget: item.budget || null
-  })
+  };
+
+  originalData = deepClone(initialValues)
 
   // Cargar datos en el formulario usando setTimeout para asegurar que el DOM esté listo
   setTimeout(() => {
@@ -379,6 +394,8 @@ const loadItemData = (item) => {
     form.setFieldValue('start_date', originalData.start_date)
     form.setFieldValue('end_date', originalData.end_date)
     form.setFieldValue('budget', originalData.budget)
+    // Sincronizar formData con los valores cargados
+    Object.assign(formData, originalData);
   }, 100)
 }
 

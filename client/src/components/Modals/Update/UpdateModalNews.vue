@@ -213,7 +213,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          @click="handleSubmit"
+          @click="form.handleSubmit()"
           :loading="updateMutation.isPending.value"
         >
           Actualizar Noticia
@@ -224,13 +224,14 @@
 </template>
 
 <script setup>
-import { watch, computed } from 'vue'
+import { watch, computed, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation, useQuery } from '@tanstack/vue-query'
 import { updateCampaignNews } from '@/services/campaigns_news.service'
 import { getAllCampaigns } from '@/services/campaigns.service'
 import { fireToast } from '@/plugins/sweetalert2'
-import { z } from 'zod'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, maxLength, helpers } from '@vuelidate/validators'
 
 // Props
 const props = defineProps({
@@ -250,10 +251,8 @@ const emit = defineEmits([
   'updated'
 ])
 
-// Variable para almacenar los datos originales del item para comparar cambios
 let originalData = null
 
-// Tags predefinidos para noticias
 const predefinedTags = [
   'Entretenimiento',
   'Informativo',
@@ -277,22 +276,19 @@ const predefinedTags = [
   'Oferta'
 ]
 
-// Función de utilidad para clonar objetos profundamente
 const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj))
 }
 
-// Función de utilidad para obtener solo las propiedades que cambiaron
 const getChangedProperties = (original, current) => {
   const changes = {}
   let hasChanges = false
 
   for (const key in current) {
     if (Object.prototype.hasOwnProperty.call(original, key) && typeof current[key] !== 'function') {
-      const originalValue = original[key] === null || original[key] === undefined ? '' : original[key]
-      const currentValue = current[key] === null || current[key] === undefined ? '' : current[key]
+      let originalValue = original[key] === null || original[key] === undefined ? '' : original[key]
+      let currentValue = current[key] === null || current[key] === undefined ? '' : current[key]
 
-      // Comparación específica para arrays (tags)
       if (Array.isArray(originalValue) && Array.isArray(currentValue)) {
         if (JSON.stringify(originalValue.sort()) !== JSON.stringify(currentValue.sort())) {
           changes[key] = currentValue
@@ -308,14 +304,19 @@ const getChangedProperties = (original, current) => {
   return hasChanges ? changes : null
 }
 
-// Función para validar URLs
 const isValidUrl = (string) => {
+  if (!string || string === '') return true 
   try {
     new URL(string)
     return true
   } catch (_) {
     return false
   }
+}
+
+// Validador personalizado para tags
+const maxTags = (max) => (value) => {
+  return !value || !Array.isArray(value) || value.length <= max
 }
 
 // Query para obtener todas las campañas
@@ -330,20 +331,54 @@ const {
 // Opciones para el v-select de campañas
 const campaignOptions = computed(() => campaigns.value || [])
 
-// Esquema de validación con Zod
-const newsSchema = z.object({
-  campaign_id: z.string().min(1, 'La campaña es requerida'),
-  title: z.string().min(5, 'El título debe tener al menos 5 caracteres').max(255, 'El título no puede superar los 255 caracteres'),
-  subtitle: z.string().max(500, 'El subtítulo no puede superar los 500 caracteres').optional().or(z.literal('')),
-  thumbnail: z.string().refine(val => !val || isValidUrl(val), 'Debe ser una URL válida').optional().or(z.literal('')),
-  hero_image: z.string().refine(val => !val || isValidUrl(val), 'Debe ser una URL válida').optional().or(z.literal('')),
-  is_public: z.boolean(),
-  content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres'),
-  author: z.string().max(255, 'El autor no puede superar los 255 caracteres').optional().or(z.literal('')),
-  tags: z.array(z.string()).max(10, 'No puedes agregar más de 10 tags').optional()
-})
+// Datos del formulario
+const formData = reactive({
+  campaign_id: '',
+  title: '',
+  subtitle: '',
+  thumbnail: '',
+  hero_image: '',
+  is_public: false,
+  content: '',
+  author: '',
+  tags: []
+});
 
-// Configuración del formulario con TanStack Form
+// Reglas de validación
+const rules = {
+  campaign_id: {
+    required: helpers.withMessage('La campaña es requerida', required)
+  },
+  title: {
+    required: helpers.withMessage('El título es requerido', required),
+    minLength: helpers.withMessage('El título debe tener al menos 5 caracteres', minLength(5)),
+    maxLength: helpers.withMessage('El título no puede superar los 255 caracteres', maxLength(255))
+  },
+  subtitle: {
+    maxLength: helpers.withMessage('El subtítulo no puede superar los 500 caracteres', maxLength(500))
+  },
+  thumbnail: {
+    url: helpers.withMessage('Debe ser una URL válida', (value) => isValidUrl(value))
+  },
+  hero_image: {
+    url: helpers.withMessage('Debe ser una URL válida', (value) => isValidUrl(value))
+  },
+  content: {
+    required: helpers.withMessage('El contenido es requerido', required),
+    minLength: helpers.withMessage('El contenido debe tener al menos 20 caracteres', minLength(20))
+  },
+  author: {
+    maxLength: helpers.withMessage('El autor no puede superar los 255 caracteres', maxLength(255))
+  },
+  tags: {
+    maxTags: helpers.withMessage('No puedes agregar más de 10 tags', maxTags(10))
+  }
+};
+
+// Inicializar Vuelidate
+const $v = useVuelidate(rules, formData);
+
+// Configuración del formulario con TanStack Form y validaciones Vuelidate
 const form = useForm({
   defaultValues: {
     campaign_id: '',
@@ -358,6 +393,33 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
+      if (value.content === '<p><br></p>' || value.content === '') {
+        formData.content = '';
+      } else {
+        formData.content = value.content;
+      }
+
+      formData.campaign_id = value.campaign_id;
+      formData.title = value.title;
+      formData.subtitle = value.subtitle;
+      formData.thumbnail = value.thumbnail;
+      formData.hero_image = value.hero_image;
+      formData.is_public = value.is_public;
+      formData.author = value.author;
+      formData.tags = value.tags;
+
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
+          }
+        }
+        return { fields: errors };
+      }
+
       return null
     },
   },
@@ -389,16 +451,20 @@ const form = useForm({
         title: 'No se detectaron cambios',
         text: 'Los datos ingresados son idénticos a los actuales'
       })
+      emit('updated') 
       return
     }
 
-    // Ejecutar la mutación con el ID del item y solo los datos que cambiaron
     await updateMutation.mutateAsync({
       id: props.item.id,
       data: changes
     })
   }
 })
+
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
 
 // Mutación para actualizar la noticia
 const updateMutation = useMutation({
@@ -426,13 +492,19 @@ const handleCancel = () => {
   emit('update:modelValue', false)
 }
 
-const handleSubmit = () => {
-  form.handleSubmit()
+const handleSubmit = async () => {
+  $v.value.$touch();
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return;
+  }
+  await form.handleSubmit();
 }
 
 const resetForm = () => {
   form.reset()
   originalData = null
+  $v.value.$reset();
 }
 
 // Función para cargar los datos del item recibido en el formulario
@@ -466,6 +538,8 @@ const loadItemData = (item) => {
     form.setFieldValue('content', originalData.content)
     form.setFieldValue('author', originalData.author)
     form.setFieldValue('tags', originalData.tags)
+    // Sincronizar formData con los valores cargados
+    Object.assign(formData, originalData);
   }, 100)
 }
 
@@ -532,12 +606,5 @@ watch(() => props.modelValue, (newValue) => {
 .text-error {
   color: #EF4444;
   font-size: 12px;
-}
-</style>
-
-<style scoped>
-.v-card-title {
-  background-color: rgba(25, 118, 210, 0.05);
-  border-bottom: 1px solid rgba(25, 118, 210, 0.1);
 }
 </style>

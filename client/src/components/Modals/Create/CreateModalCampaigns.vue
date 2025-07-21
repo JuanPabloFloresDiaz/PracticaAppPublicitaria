@@ -113,7 +113,7 @@
         <v-btn variant="outlined" @click="handleCancel" :disabled="createMutation.isPending.value">
           Cancelar
         </v-btn>
-        <v-btn color="primary" variant="flat" @click="handleSubmit" :loading="createMutation.isPending.value">
+        <v-btn color="primary" variant="flat" @click="form.handleSubmit()" :loading="createMutation.isPending.value">
           Crear Campaña
         </v-btn>
       </v-card-actions>
@@ -122,12 +122,13 @@
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { watch, reactive } from 'vue'
 import { useForm, Field } from '@tanstack/vue-form'
 import { useMutation } from '@tanstack/vue-query'
 import { createCampaign } from '@/services/campaigns.service'
 import { fireToast } from '@/plugins/sweetalert2'
-import { z } from 'zod'
+import { useVuelidate } from '@vuelidate/core'
+import { required, minLength, numeric, minValue, helpers } from '@vuelidate/validators'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 
@@ -142,16 +143,48 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'created'])
 
-const campaignSchema = z.object({
-  name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-  description: z.string().optional(),
-  budget: z.preprocess(
-    val => (val ? parseFloat(val) : null),
-    z.number().nonnegative('El presupuesto debe ser positivo').nullable()
-  ),
-  start_date: z.string().nonempty('Fecha de inicio requerida'),
-  end_date: z.string().optional(),
-})
+// Validador personalizado para presupuesto no negativo
+const nonNegative = (value) => value === null || value >= 0;
+
+// Validador personalizado para fechas
+const dateAfterOrEqual = (comparisonField) => helpers.withMessage(
+  ({ $params }) => `La fecha de fin debe ser posterior o igual a la de inicio`,
+  (value, siblings) => {
+    if (!value || !siblings[comparisonField]) return true;
+    return dayjs(value).isSameOrAfter(dayjs(siblings[comparisonField]), 'day');
+  }
+);
+
+// Datos del formulario
+const formData = reactive({
+  name: '',
+  description: '',
+  start_date: '',
+  end_date: '',
+  budget: null,
+});
+
+// Reglas de validación
+const rules = {
+  name: {
+    required: helpers.withMessage('El nombre es requerido', required),
+    minLength: helpers.withMessage('El nombre debe tener al menos 3 caracteres', minLength(3))
+  },
+  description: {},
+  budget: {
+    numeric: helpers.withMessage('El presupuesto debe ser un número', numeric),
+    nonNegative: helpers.withMessage('El presupuesto debe ser positivo', nonNegative)
+  },
+  start_date: {
+    required: helpers.withMessage('Fecha de inicio requerida', required)
+  },
+  end_date: {
+    dateAfterOrEqual: dateAfterOrEqual('start_date') // Valida que end_date sea >= start_date
+  }
+};
+
+// Inicializar Vuelidate
+const $v = useVuelidate(rules, formData);
 
 const form = useForm({
   defaultValues: {
@@ -163,49 +196,52 @@ const form = useForm({
   },
   validators: {
     onSubmitAsync: async ({ value }) => {
-      // 1) Filtrar campos vacíos
-      const cleanData = {}
-      Object.keys(value).forEach((key) => {
-        const v = value[key]
-        if (v !== '' && v != null) cleanData[key] = v
-      })
-
-      // 2) Validación Zod
-      const parsed = campaignSchema.safeParse(cleanData)
-      if (!parsed.success) {
-        const errors = {}
-        parsed.error.issues.forEach((issue) => {
-          errors[issue.path[0]] = issue.message
-        })
-        return { fields: errors }
+      // Normalizar contenido de Quill Editor para la validación
+      if (value.description === '<p><br></p>' || value.description === '') {
+        formData.description = ''; 
+      } else {
+        formData.description = value.description;
       }
 
-      // 3) Validación de fechas
-      if (
-        cleanData.start_date &&
-        cleanData.end_date &&
-        !dayjs(cleanData.end_date).isSameOrAfter(cleanData.start_date, 'day')
-      ) {
-        return {
-          fields: {
-            end_date: 'La fecha de fin debe ser posterior a la de inicio',
-          },
+      formData.name = value.name;
+      formData.start_date = value.start_date;
+      formData.end_date = value.end_date;
+      formData.budget = value.budget;
+
+      const isValid = await $v.value.$validate();
+
+      if (!isValid) {
+        const errors = {};
+        for (const field in $v.value.$errors) {
+          if ($v.value.$errors[field].length > 0) {
+            errors[field] = $v.value.$errors[field][0].$message;
+          }
         }
+        return { fields: errors };
       }
-
-      // Si todo OK, no devolver errores
-      return null
+      return null;
     },
   },
   onSubmit: async ({ value }) => {
     const cleanData = {}
     Object.keys(value).forEach((key) => {
       const v = value[key]
-      if (v !== '' && v != null) cleanData[key] = v
+      if (v !== '' && v != null) {
+        if (key === 'description' && (v === '<p><br></p>' || v === '')) {
+          cleanData[key] = ''
+        } else {
+          cleanData[key] = v
+        }
+      }
     })
     await createMutation.mutateAsync(cleanData)
   },
 })
+
+// Sincronizar formData con los valores de TanStack Form
+watch(form.values, (newValues) => {
+  Object.assign(formData, newValues);
+}, { deep: true });
 
 // -------------------------------
 // Configura la mutación
@@ -219,6 +255,7 @@ const createMutation = useMutation({
     })
     emit('created')
     form.reset()
+    $v.value.$reset(); 
   },
   onError: (err) => {
     console.error('Error creando campaña:', err)
@@ -232,15 +269,27 @@ const createMutation = useMutation({
 // -------------------------------
 // Handlers
 // -------------------------------
-const handleSubmit = () => form.handleSubmit()
+const handleSubmit = async () => {
+  $v.value.$touch();
+  if ($v.value.$invalid) {
+    fireToast({ icon: 'error', title: 'Favor revisar los datos ingresados' });
+    return;
+  }
+  await form.handleSubmit();
+}
+
 const handleCancel = () => {
   form.reset()
+  $v.value.$reset();
   emit('update:modelValue', false)
 }
 
 // Resetea al cerrar
 watch(() => props.modelValue, (open) => {
-  if (!open) form.reset()
+  if (!open) {
+    form.reset();
+    $v.value.$reset();
+  }
 })
 </script>
 

@@ -1,7 +1,6 @@
 <template>
   <v-container class="fill-height dashboard-container" max-width="1400">
     <div class="w-100">
-      <!-- Header mejorado -->
       <v-card 
         :color="$vuetify.theme.current.dark ? 'surface-container-high' : 'surface-bright'"
         class="mb-8"
@@ -24,7 +23,6 @@
         </v-card-text>
       </v-card>
 
-      <!-- Campaign Selector mejorado -->
       <v-card 
         class="mb-6" 
         elevation="1"
@@ -84,7 +82,6 @@
 
       <!-- News Section -->
       <div v-if="selectedCampaignId">
-        <!-- Header de noticias -->
         <v-card 
           class="mb-6"
           elevation="1"
@@ -170,7 +167,6 @@
                 @click="viewNewsDetail(item)"
                 style="cursor: pointer;"
               >
-                <!-- Header de la noticia -->
                 <v-card-title class="pa-4 pb-2">
                   <div class="d-flex justify-space-between align-start w-100">
                     <div class="flex-grow-1 mr-3">
@@ -192,7 +188,6 @@
                   </div>
                 </v-card-title>
 
-                <!-- Imagen si existe -->
                 <div v-if="item.thumbnail" class="px-4">
                   <v-img
                     :src="item.thumbnail"
@@ -210,13 +205,11 @@
 
                 <!-- Contenido -->
                 <v-card-text class="pa-4">
-                  <!-- Contenido HTML renderizado -->
                   <div 
                     class="rich-text-content text-body-2 mb-4"
                     v-html="item.content"
                   />
                   
-                  <!-- Tags si existen -->
                   <div v-if="item.tags && Array.isArray(item.tags) && item.tags.length > 0" class="mb-4">
                     <div class="text-caption text-on-surface-variant mb-2">
                       <v-icon size="14" class="mr-1">mdi-tag</v-icon>
@@ -243,7 +236,6 @@
                     </div>
                   </div>
                   
-                  <!-- Footer de la noticia -->
                   <v-divider class="mb-3" />
                   <div class="d-flex justify-space-between align-center">
                     <div class="d-flex align-center">
@@ -271,7 +263,6 @@
 
       <!-- Welcome State mejorado -->
       <div v-else>
-        <!-- Estadísticas generales -->
         <v-row class="mb-6">
           <v-col v-for="stat in stats" :key="stat.title" cols="12" sm="6" md="3">
             <v-card 
